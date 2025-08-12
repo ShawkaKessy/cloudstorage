@@ -1,0 +1,44 @@
+.
+├── HELP.md
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   └── ru
+│   │   │       └── netology
+│   │   │           └── cloudstorage
+│   │   │               ├── CloudstorageApplication.java
+│   │   │               ├── controller
+│   │   │               │   ├── AuthController.java
+│   │   │               │   └── FileController.java
+│   │   │               ├── model
+│   │   │               │   ├── FileEntity.java
+│   │   │               │   └── User.java
+│   │   │               ├── repository
+│   │   │               │   ├── FileRepository.java
+│   │   │               │   └── UserRepository.java
+│   │   │               ├── security
+│   │   │               │   └── SecurityConfig.java
+│   │   │               └── service
+│   │   │                   ├── AuthService.java
+│   │   │                   └── FileService.java
+│   │   └── resources
+│   │       ├── application.yml
+│   │       ├── data.sql
+│   │       ├── static
+│   │       └── templates
+│   └── test
+│       └── java
+│           ├── resources
+│           │   └── application-test.yml
+│           └── ru
+│               └── netology
+│                   └── cloudstorage
+│                       ├── CloudstorageApplicationTests.java
+│                       ├── TestCloudstorageApplication.java
+│                       └── TestcontainersConfiguration.java
+└── structure.txt
+
+21 directories, 21 files
