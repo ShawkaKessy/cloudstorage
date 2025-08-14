@@ -5,23 +5,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
-import ru.netology.cloudstorage.model.AuthRequest;
+import ru.netology.cloudstorage.dto.AuthRequest;
+
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class AuthControllerIntegrationTest {
+class AuthControllerIntegrationTest {
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    private TestRestTemplate rest;
 
     @Test
     void loginReturnsToken() {
-        AuthRequest authRequest = new AuthRequest("user", "password");
+        AuthRequest req = new AuthRequest();
+        req.setLogin("user");
+        req.setPassword("password");
 
-        ResponseEntity<String> response = restTemplate.postForEntity("/login", authRequest, String.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotBlank();
+        ResponseEntity<Map> resp = rest.postForEntity("/auth/login", req, Map.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody()).containsKey("auth-token");
+        assertThat(resp.getBody().get("auth-token")).asString().isNotBlank();
     }
 }

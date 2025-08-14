@@ -1,17 +1,20 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/cloudstorage_test_db
-    username: romarekonshin
-    password: '123456'
-    driver-class-name: org.postgresql.Driver
-
+    url: jdbc:tc:postgresql:16://localhost:5432/cloudstorage_test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+  sql:
+    init:
+      mode: always
 
 server:
   port: 0
+
+logging:
+  level:
+    ru.netology.cloudstorage: INFO

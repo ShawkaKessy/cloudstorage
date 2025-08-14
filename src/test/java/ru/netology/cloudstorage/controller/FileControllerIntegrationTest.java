@@ -4,100 +4,69 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import ru.netology.cloudstorage.model.AuthRequest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import ru.netology.cloudstorage.dto.AuthRequest;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class FileControllerIntegrationTest {
-
-    @LocalServerPort
-    private int port;
+class FileControllerIntegrationTest {
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    private TestRestTemplate rest;
 
     private String token;
 
     @BeforeEach
     void login() {
-        AuthRequest authRequest = new AuthRequest("user", "password");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<AuthRequest> request = new HttpEntity<>(authRequest, headers);
+        AuthRequest req = new AuthRequest();
+        req.setLogin("user");
+        req.setPassword("password");
 
-        ResponseEntity<Map> response = restTemplate.postForEntity("/login", request, Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        this.token = (String) response.getBody().get("auth-token");
+        ResponseEntity<Map> r = rest.postForEntity("/auth/login", req, Map.class);
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK);
+        token = (String) r.getBody().get("auth-token");
         assertThat(token).isNotBlank();
     }
 
-
     @Test
-    void upload_list_download_delete_file() {
-        // ---------- 1. Загрузка файла ----------
+    void upload_list_download_delete() {
+        // upload
         HttpHeaders headers = new HttpHeaders();
-        headers.set("auth-token", token);  // заголовок auth-token
+        headers.set("auth-token", token);
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-        ByteArrayResource fileAsResource = new ByteArrayResource("Привет, файл!".getBytes()) {
-            @Override
-            public String getFilename() {
-                return "test.txt";
-            }
+        ByteArrayResource resource = new ByteArrayResource("hello".getBytes()) {
+            @Override public String getFilename() { return "test.txt"; }
         };
+        MultiValueMap<String,Object> body = new LinkedMultiValueMap<>();
+        body.add("file", resource);
 
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", fileAsResource);
+        ResponseEntity<Void> up = rest.postForEntity("/file/upload?filename=test.txt", new HttpEntity<>(body, headers), Void.class);
+        assertThat(up.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        // list
+        ResponseEntity<List> list = rest.exchange("/file/list?limit=10",
+                HttpMethod.GET, new HttpEntity<>(headers), List.class);
+        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(list.getBody().toString()).contains("test.txt");
 
-        ResponseEntity<Void> uploadResponse = restTemplate.postForEntity(
-                "http://localhost:" + port + "/file?filename=test.txt",
-                requestEntity,
-                Void.class
-        );
-        assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // download
+        ResponseEntity<byte[]> dl = rest.exchange("/file/download?filename=test.txt",
+                HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
+        assertThat(dl.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(new String(dl.getBody())).isEqualTo("hello");
 
-        // ---------- 2. Получение списка ----------
-        headers = new HttpHeaders();
-        headers.set("auth-token", token);
-        HttpEntity<Void> listRequest = new HttpEntity<>(headers);
-
-        ResponseEntity<String> listResponse = restTemplate.exchange(
-                "http://localhost:" + port + "/list?limit=10",
-                HttpMethod.GET,
-                listRequest,
-                String.class
-        );
-        assertThat(listResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(listResponse.getBody()).contains("test.txt");
-
-        // ---------- 3. Скачивание ----------
-        ResponseEntity<byte[]> downloadResponse = restTemplate.exchange(
-                "http://localhost:" + port + "/file?filename=test.txt",
-                HttpMethod.GET,
-                listRequest,
-                byte[].class
-        );
-        assertThat(downloadResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(new String(downloadResponse.getBody())).isEqualTo("Привет, файл!");
-
-        // ---------- 4. Удаление ----------
-        ResponseEntity<Void> deleteResponse = restTemplate.exchange(
-                "http://localhost:" + port + "/file?filename=test.txt",
-                HttpMethod.DELETE,
-                listRequest,
-                Void.class
-        );
-        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // delete
+        ResponseEntity<Void> del = rest.exchange("/file/delete?filename=test.txt",
+                HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+        assertThat(del.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }
