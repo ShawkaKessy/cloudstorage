@@ -1,0 +1,22 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cloudstorage
+    username: user
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.jdbc.lob.non_contextual_creation: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+app:
+  cors:
+    allowed-origins: "http://localhost:8080,http://localhost:8081"
