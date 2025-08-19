@@ -1,14 +1,11 @@
 package ru.netology.cloudstorage.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data // <-- именно эта аннотация должна генерировать все геттеры/сеттеры
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

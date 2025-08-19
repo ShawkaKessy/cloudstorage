@@ -3,12 +3,15 @@ package ru.netology.cloudstorage.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.netology.cloudstorage.dto.FileResponse;
 import ru.netology.cloudstorage.entity.User;
 import ru.netology.cloudstorage.service.AuthService;
 import ru.netology.cloudstorage.service.FileService;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,20 +24,26 @@ public class FileController {
         return authService.getUserByToken(token);
     }
 
+    // POST /file — multipart/form-data с полем "file" + query filename
     @PostMapping("/file")
     public ResponseEntity<Void> uploadFile(@RequestHeader("auth-token") String token,
                                            @RequestParam String filename,
-                                           @RequestBody byte[] content) {
-        fileService.uploadFile(auth(token), filename, content);
+                                           @RequestParam("file") MultipartFile multipartFile) throws IOException {
+        fileService.uploadFile(auth(token), filename, multipartFile.getBytes());
         return ResponseEntity.ok().build();
     }
 
+    // GET /file — скачать файл по имени
     @GetMapping("/file")
     public ResponseEntity<byte[]> downloadFile(@RequestHeader("auth-token") String token,
                                                @RequestParam String filename) {
-        return ResponseEntity.ok(fileService.downloadFile(auth(token), filename));
+        byte[] content = fileService.downloadFile(auth(token), filename);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(content);
     }
 
+    // DELETE /file — удалить по имени
     @DeleteMapping("/file")
     public ResponseEntity<Void> deleteFile(@RequestHeader("auth-token") String token,
                                            @RequestParam String filename) {
@@ -42,16 +51,27 @@ public class FileController {
         return ResponseEntity.ok().build();
     }
 
+    // ✅ PUT /file — ПРАВИЛЬНАЯ СИГНАТУРА: ?filename=... + JSON {"name": "новоеИмя"}
     @PutMapping("/file")
     public ResponseEntity<Void> renameFile(@RequestHeader("auth-token") String token,
-                                           @RequestParam String oldName,
-                                           @RequestParam String newName) {
-        fileService.renameFile(auth(token), oldName, newName);
+                                           @RequestParam String filename,
+                                           @RequestBody Map<String, String> body) {
+        String newName = body.get("name");
+        fileService.renameFile(auth(token), filename, newName);
         return ResponseEntity.ok().build();
     }
 
+    // GET /list — список файлов (limit необязателен)
     @GetMapping("/list")
-    public ResponseEntity<List<FileResponse>> listFiles(@RequestHeader("auth-token") String token) {
-        return ResponseEntity.ok(fileService.listFiles(auth(token)));
+    public List<FileResponse> listFiles(@RequestHeader("auth-token") String token,
+                                        @RequestParam(required = false) Integer limit) {
+        User user = auth(token);
+        var files = fileService.listFiles(user);
+        if (limit != null && limit > 0 && limit < files.size()) {
+            files = files.subList(0, limit);
+        }
+        return files.stream()
+                .map(file -> new FileResponse(file.getFilename(), file.getContent().length))
+                .toList();
     }
 }

@@ -35,6 +35,9 @@ class ApiIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation", () -> true);
+        // Если в application.yml включён context-path /cloud — оставляем как есть.
+        // Тесты ниже используют абсолютные пути с /cloud.
     }
 
     @Autowired
@@ -48,7 +51,7 @@ class ApiIntegrationTest {
     @Order(1)
     void testRegister() throws Exception {
         RegisterRequest registerRequest = new RegisterRequest("testuser", "password");
-        mockMvc.perform(post("/register")
+        mockMvc.perform(post("/cloud/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isOk());
@@ -57,46 +60,54 @@ class ApiIntegrationTest {
     @Test
     @Order(2)
     void testLoginAndFileFlow() throws Exception {
-        // Логинимся
-        LoginRequest loginRequest = new LoginRequest("testuser","password");
-        var loginResult = mockMvc.perform(post("/login")
+        // Логин
+        LoginRequest loginRequest = new LoginRequest("testuser", "password");
+        var loginResult = mockMvc.perform(post("/cloud/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andReturn();
 
         token = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("authToken").asText();
+                .get("auth-token").asText();
 
-        // Загружаем файл
-        mockMvc.perform(post("/file")
-                        .header("auth-token", token)
+        // Загрузка файла (multipart)
+        var file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "file.txt",
+                "text/plain",
+                "Hello World".getBytes()
+        );
+
+        mockMvc.perform(multipart("/cloud/file")
+                        .file(file)
                         .param("filename", "file.txt")
-                        .content("Hello World".getBytes()))
+                        .header("auth-token", token))
                 .andExpect(status().isOk());
 
-        // Скачиваем файл
-        mockMvc.perform(get("/file")
+        // Скачивание
+        mockMvc.perform(get("/cloud/file")
                         .header("auth-token", token)
                         .param("filename", "file.txt"))
                 .andExpect(status().isOk())
                 .andExpect(content().bytes("Hello World".getBytes()));
 
-        // Переименовываем файл
-        mockMvc.perform(put("/file")
+        // ✅ Переименование: ?filename=old + body {"name":"new"}
+        mockMvc.perform(put("/cloud/file")
                         .header("auth-token", token)
-                        .param("oldName", "file.txt")
-                        .param("newName", "file2.txt"))
+                        .param("filename", "file.txt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"file2.txt\"}"))
                 .andExpect(status().isOk());
 
-        // Список файлов
-        mockMvc.perform(get("/list")
+        // Список
+        mockMvc.perform(get("/cloud/list")
                         .header("auth-token", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].filename").value("file2.txt"));
 
-        // Удаляем файл
-        mockMvc.perform(delete("/file")
+        // Удаление
+        mockMvc.perform(delete("/cloud/file")
                         .header("auth-token", token)
                         .param("filename", "file2.txt"))
                 .andExpect(status().isOk());

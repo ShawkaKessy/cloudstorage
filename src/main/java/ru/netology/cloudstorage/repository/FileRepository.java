@@ -9,5 +9,5 @@ import java.util.Optional;
 
 public interface FileRepository extends JpaRepository<FileEntity, Long> {
     Optional<FileEntity> findByOwnerAndFilename(User owner, String filename);
-    List<FileEntity> findByOwner(User owner);
+    List<FileEntity> findAllByOwner(User owner);
 }

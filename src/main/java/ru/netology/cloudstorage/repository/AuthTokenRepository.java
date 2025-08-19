@@ -5,6 +5,7 @@ import ru.netology.cloudstorage.entity.AuthToken;
 
 import java.util.Optional;
 
-public interface AuthTokenRepository extends JpaRepository<AuthToken, String> {
+public interface AuthTokenRepository extends JpaRepository<AuthToken, Long> {
     Optional<AuthToken> findByToken(String token);
+    void deleteByToken(String token);
 }

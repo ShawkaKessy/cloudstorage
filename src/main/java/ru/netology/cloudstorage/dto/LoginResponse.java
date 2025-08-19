@@ -1,3 +1,8 @@
 package ru.netology.cloudstorage.dto;
 
-public record LoginResponse(String authToken) {}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record LoginResponse(
+        @JsonProperty("auth-token")
+        String authToken
+) {}
